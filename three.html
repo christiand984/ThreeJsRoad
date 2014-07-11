@@ -1,0 +1,193 @@
+<!doctype HTML>
+<html class="no-js" lang="en">
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+		<script type="text/javascript" src="three.min.js"></script>
+	</head>
+	<body>
+		<style>canvas { width: 100%; height: 100% }</style>
+		<script>
+
+		var roadgame = (function() {
+
+			var renderer = new THREE.WebGLRenderer();
+			var scene = new THREE.Scene();
+			var camera = null;
+			var spotLight = null;
+			var trackLength = 0;
+			var tracksAdded = 0;
+
+			init = function() {
+				setRenderer();
+				setCamera();
+				setSpotlight();
+				setInteractions();
+				game.road.createRoad(0);
+				game.obstacle.createObstables(0);
+
+				animate();
+			},
+
+			setRenderer = function() {
+      			renderer.setSize(window.innerWidth, window.innerHeight);
+      			document.body.appendChild(renderer.domElement);
+			},
+
+			setInteractions = function() {
+			    window.onkeydown = keyboardInput;
+			},
+
+			keyboardInput = function(ev) {
+				switch(ev.keyCode) {
+					case 38:
+						camera.position.z += 0.1;
+					break;
+
+					case 40:
+						camera.position.z -= 0.1;
+					break;      		
+				}
+			}
+
+			animate = function() {
+
+				setCurrentSpeed();
+				updateCamera();
+				updateSpotlight();
+		 		
+		 		if(camera.position.z > (trackLength-(game.road.roadLength*tracksAdded)*.75) ) {
+		 			console.log('(CAMERA) I am at Z:' + camera.position.z);
+		 			game.road.createRoad(game.road.roadLength*(tracksAdded+1));
+		 			game.obstacle.createObstables(game.road.roadLength*(tracksAdded+1));
+		 		}
+
+				renderer.render(scene, camera);
+
+		        requestAnimationFrame(function(){
+		            animate();
+		        });
+
+			},
+
+			setCamera = function() {
+				camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 16000);
+				camera.position.z = 0;
+				camera.rotation.y = Math.PI;
+
+			},
+
+			setSpotlight = function() {
+				spotLight = new THREE.SpotLight(0xffffff);
+				spotLight.position.set( 0, 2000, -100 );
+
+				scene.add(spotLight);
+
+			}
+
+			setCurrentSpeed = function() {
+				if(game.speed.delta <= game.speed.maxDelta)
+					game.speed.delta += game.speed.deltaIncrease;
+
+			},
+
+			updateCamera = function() {
+				camera.position.z += game.speed.delta;
+
+			},
+
+			updateSpotlight = function() {
+				spotLight.position.z =- camera.position.z - 500;
+
+			},
+
+			game = {
+				obstacle: {
+					createObstables: function(_zOffset) {
+
+						console.log('(OBSTACLES) creating Obstacles at Z:'+_zOffset);
+						for(var x=0; x<300; x++) {
+							// cube
+
+							var cubeSize = Math.floor(Math.random() * 6) + 1;
+							var cubeY = -10 + (cubeSize/2);
+							var cubeX = ( Math.floor(Math.random() * 32) + 1 ) - 16;	
+							var cubeZ = (Math.floor(Math.random() * game.road.roadLength) + 1) + _zOffset;
+
+							var cubeColor = '#'+Math.floor(Math.random()*16777215).toString(16);
+
+							var cube = new THREE.Mesh(
+								new THREE.CubeGeometry(cubeSize, cubeSize, cubeSize), 
+								new THREE.MeshLambertMaterial({
+									color: cubeColor
+								})
+							);
+
+							cube.position.x = cubeX;
+							cube.position.y = cubeY;
+							cube.position.z = cubeZ;
+							cube.overdraw = true;
+							scene.add(cube);
+						}
+					}
+				},
+				road: {
+					roadLength: 16000,
+					texture: 'road.jpg',
+					createRoad: function(_zOffset) {
+
+						console.log('(ROAD) creating more Road at Z:'+_zOffset);
+
+						var texture = THREE.ImageUtils.loadTexture(game.road.texture);
+						texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+						texture.repeat.set(1, 400);
+						texture.anisotropy = 20;
+
+						var road = new THREE.Mesh( 
+							new THREE.PlaneGeometry( 32, game.road.roadLength),
+							new THREE.MeshBasicMaterial( 
+								{ 
+									color: 0xaaaaaa, 
+									shininess:100, 
+									ambient: 0x333333, 
+									map:texture 
+								} 
+							) 
+						);
+
+						road.rotation.x = -Math.PI/2;
+						road.position.y = -10;
+						road.position.z = game.road.roadLength/2+_zOffset;
+
+						if(_zOffset>0)
+							tracksAdded++;
+						trackLength += game.road.roadLength;
+
+						scene.add(road);
+
+					}
+				},			
+				speed: {
+					delta: 0.05,
+					maxDelta: 50,
+					deltaIncrease: 0.01
+				},
+
+			};
+
+			return {
+
+				gameVersion: "0.1",
+
+				init: function() {	
+					init();	 
+				}
+
+			};
+
+		})();    
+
+		roadgame.init();
+		</script>
+	</body>
+</html>
